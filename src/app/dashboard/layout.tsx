@@ -1,7 +1,7 @@
 "use client";
 
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
-import { LayoutDashboard, Package, ShoppingCart, BrainCircuit, LogOut, Store, Menu, Cloud } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, BrainCircuit, LogOut, Store, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -98,12 +98,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="hidden sm:flex flex-col items-end mr-2 text-right">
                 <span className="text-xs font-bold text-slate-900 leading-none">Admin Panel</span>
                 <span className="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-wider flex items-center gap-1">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Online • WhatsApp Ready
+                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Online
                 </span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-xl border border-indigo-100 hidden md:flex">
-                <Cloud className="w-4 h-4 text-indigo-600" />
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-tight">Cloud Synced</span>
               </div>
               <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer group">
                 <BrainCircuit className="w-5 h-5 group-hover:scale-110 transition-transform" />

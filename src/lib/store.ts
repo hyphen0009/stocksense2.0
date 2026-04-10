@@ -9,13 +9,13 @@ import {
   deleteDoc,
   doc,
   query,
+  where,
   orderBy,
-  setDoc,
-  getDocs,
   Timestamp,
-  writeBatch
+  setDoc,
+  getDocs
 } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 
 export interface Product {
   id: string;
@@ -36,93 +36,115 @@ export interface Sale {
 }
 
 export function useKiranaStore() {
+  const { firestore } = useFirestore();
+  const { user } = useUser();
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [db, setDb] = useState<any>(null);
 
   useEffect(() => {
-    const { firestore } = initializeFirebase();
-    setDb(firestore);
+    if (!firestore || !user) return;
 
-    // Listen to Products
-    const qProducts = query(collection(firestore, 'products'), orderBy('name', 'asc'));
-    const unsubscribeProducts = onSnapshot(qProducts, (snapshot) => {
-      const pData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    // 1. Subscribe to Products
+    const productsQuery = query(
+      collection(firestore, 'products'),
+      where('shopId', '==', user.uid)
+    );
+
+    const unsubProducts = onSnapshot(productsQuery, (snapshot: any) => {
+      const pData: Product[] = snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Product[];
       setProducts(pData);
 
-      // Migration logic: If cloud is empty but local has data, migrate
-      if (pData.length === 0) {
-        const localProducts = localStorage.getItem('kiranatalk_products');
-        if (localProducts) {
-          const parsed = JSON.parse(localProducts);
-          const batch = writeBatch(firestore);
-          parsed.forEach((p: Product) => {
-            const docRef = doc(collection(firestore, 'products'));
-            batch.set(docRef, { ...p, id: docRef.id });
+      // Auto-migration from localStorage if Firestore is empty
+      if (snapshot.empty) {
+        const local = localStorage.getItem('kiranatalk_products');
+        if (local) {
+          const items = JSON.parse(local);
+          items.forEach((item: any) => {
+            const { id, ...rest } = item;
+            addDoc(collection(firestore, 'products'), { ...rest, shopId: user.uid });
           });
-          batch.commit().then(() => {
-            localStorage.removeItem('kiranatalk_products');
-          });
+          localStorage.removeItem('kiranatalk_products');
         }
       }
     });
 
-    // Listen to Sales
-    const qSales = query(collection(firestore, 'sales'), orderBy('timestamp', 'desc'));
-    const unsubscribeSales = onSnapshot(qSales, (snapshot) => {
-      const sData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+    // 2. Subscribe to Sales
+    const salesQuery = query(
+      collection(firestore, 'sales'),
+      where('shopId', '==', user.uid),
+      orderBy('timestamp', 'desc')
+    );
+
+    const unsubSales = onSnapshot(salesQuery, (snapshot) => {
+      const sData: Sale[] = snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate()?.toISOString() || new Date().toISOString()
+      })) as Sale[];
       setSales(sData);
     });
 
     setIsInitialized(true);
-
     return () => {
-      unsubscribeProducts();
-      unsubscribeSales();
+      unsubProducts();
+      unsubSales();
     };
-  }, []);
+  }, [firestore, user]);
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
-    if (!db) return;
-    const docRef = await addDoc(collection(db, 'products'), product);
+    if (!firestore || !user) return;
+    const docRef = await addDoc(collection(firestore, 'products'), {
+      ...product,
+      shopId: user.uid,
+      updatedAt: Timestamp.now()
+    });
     return { ...product, id: docRef.id };
   };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
-    if (!db) return;
-    const docRef = doc(db, 'products', id);
-    await updateDoc(docRef, updates);
+    if (!firestore) return;
+    const docRef = doc(firestore, 'products', id);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: Timestamp.now()
+    });
   };
 
   const deleteProduct = async (id: string) => {
-    if (!db) return;
-    await deleteDoc(doc(db, 'products', id));
+    if (!firestore) return;
+    await deleteDoc(doc(firestore, 'products', id));
   };
 
   const recordSale = async (barcode: string, quantity: number = 1) => {
-    if (!db) return null;
+    if (!firestore || !user) return null;
+
     const product = products.find((p) => p.barcode === barcode);
     if (!product || product.quantity < quantity) return null;
 
-    const sale: Omit<Sale, 'id'> = {
+    const saleData = {
       productId: product.id,
       productName: product.name,
       quantity,
       total: product.price * quantity,
-      timestamp: new Date().toISOString(),
+      timestamp: Timestamp.now(),
+      shopId: user.uid
     };
 
-    // Use a batch to update stock and log sale atomically
-    const batch = writeBatch(db);
-    const saleRef = doc(collection(db, 'sales'));
-    const productRef = doc(db, 'products', product.id);
+    // 1. Record Sale
+    const saleRef = await addDoc(collection(firestore, 'sales'), saleData);
 
-    batch.set(saleRef, sale);
-    batch.update(productRef, { quantity: product.quantity - quantity });
+    // 2. Update Stock
+    const productRef = doc(firestore, 'products', product.id);
+    await updateDoc(productRef, {
+      quantity: product.quantity - quantity,
+      updatedAt: Timestamp.now()
+    });
 
-    await batch.commit();
-    return { ...sale, id: saleRef.id };
+    return { ...saleData, id: saleRef.id, timestamp: saleData.timestamp.toDate().toISOString() };
   };
 
   return {
