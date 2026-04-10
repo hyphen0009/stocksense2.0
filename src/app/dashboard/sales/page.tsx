@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useKiranaStore, Product, Sale } from '@/lib/store';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Barcode, Trash2, Plus, Minus, Search, CreditCard, Banknote, CheckCircle2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { BarcodeScanner } from '@/components/barcode-scanner';
 
 export default function SalesPage() {
   const { products, recordSale, isInitialized } = useKiranaStore();
@@ -32,7 +34,14 @@ export default function SalesPage() {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
-        if (existing.qty >= product.quantity) return prev;
+        if (existing.qty >= product.quantity) {
+          toast({
+            title: "Limit Reached",
+            description: `Only ${product.quantity} units of ${product.name} are in stock.`,
+            variant: "destructive",
+          });
+          return prev;
+        }
         return prev.map((item) => 
           item.product.id === product.id ? { ...item, qty: item.qty + 1 } : item
         );
@@ -70,6 +79,24 @@ export default function SalesPage() {
     });
   };
 
+  const handleScanSuccess = (code: string) => {
+    const product = products.find(p => p.barcode === code);
+    if (product) {
+      addToCart(product);
+      toast({
+        title: "Scanned Successfully",
+        description: `Added ${product.name} to cart.`,
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Product Not Found",
+        description: `No product found with barcode: ${code}`,
+      });
+    }
+    setScanning(false);
+  };
+
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     p.barcode.includes(search)
@@ -91,7 +118,7 @@ export default function SalesPage() {
           </div>
           <Button 
             className={`h-12 w-12 rounded-xl bg-accent text-primary transition-all ${scanning ? 'animate-pulse ring-2 ring-primary' : ''}`}
-            onClick={() => setScanning(!scanning)}
+            onClick={() => setScanning(true)}
           >
             <Barcode className="w-6 h-6" />
           </Button>
@@ -191,6 +218,12 @@ export default function SalesPage() {
           </CardFooter>
         </Card>
       </div>
+
+      <BarcodeScanner 
+        isOpen={scanning} 
+        onClose={() => setScanning(false)} 
+        onScan={handleScanSuccess} 
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useKiranaStore, Product } from '@/lib/store';
@@ -9,12 +10,23 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit2, Trash2, Package, Barcode, Filter } from 'lucide-react';
 import { useState } from 'react';
+import { BarcodeScanner } from '@/components/barcode-scanner';
 
 export default function InventoryPage() {
   const { products, addProduct, updateProduct, deleteProduct, isInitialized } = useKiranaStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  // Local state for the form to allow scanner updates
+  const [formData, setFormData] = useState({
+    name: '',
+    category: '',
+    price: '',
+    quantity: '',
+    barcode: ''
+  });
 
   if (!isInitialized) return null;
 
@@ -24,15 +36,19 @@ export default function InventoryPage() {
     p.barcode.includes(searchTerm)
   );
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleSaveProduct = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
     const data = {
-      name: formData.get('name') as string,
-      category: formData.get('category') as string,
-      price: Number(formData.get('price')),
-      quantity: Number(formData.get('quantity')),
-      barcode: formData.get('barcode') as string,
+      name: formData.name,
+      category: formData.category,
+      price: Number(formData.price),
+      quantity: Number(formData.quantity),
+      barcode: formData.barcode,
     };
 
     if (editingProduct) {
@@ -43,6 +59,24 @@ export default function InventoryPage() {
     
     setIsAddOpen(false);
     setEditingProduct(null);
+    setFormData({ name: '', category: '', price: '', quantity: '', barcode: '' });
+  };
+
+  const handleEditClick = (product: Product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      category: product.category,
+      price: product.price.toString(),
+      quantity: product.quantity.toString(),
+      barcode: product.barcode
+    });
+    setIsAddOpen(true);
+  };
+
+  const handleScanSuccess = (code: string) => {
+    setFormData(prev => ({ ...prev, barcode: code }));
+    setIsScannerOpen(false);
   };
 
   return (
@@ -63,7 +97,10 @@ export default function InventoryPage() {
           </Button>
           <Dialog open={isAddOpen} onOpenChange={(open) => {
             setIsAddOpen(open);
-            if (!open) setEditingProduct(null);
+            if (!open) {
+              setEditingProduct(null);
+              setFormData({ name: '', category: '', price: '', quantity: '', barcode: '' });
+            }
           }}>
             <DialogTrigger asChild>
               <Button className="flex-1 md:flex-none h-11 bg-primary hover:bg-primary/90 text-white font-bold">
@@ -79,28 +116,34 @@ export default function InventoryPage() {
               <form onSubmit={handleSaveProduct} className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Product Name</Label>
-                  <Input id="name" name="name" defaultValue={editingProduct?.name} required />
+                  <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Input id="category" name="category" defaultValue={editingProduct?.category} required />
+                    <Input id="category" name="category" value={formData.category} onChange={handleInputChange} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="price">Price (₹)</Label>
-                    <Input id="price" name="price" type="number" step="0.01" defaultValue={editingProduct?.price} required />
+                    <Input id="price" name="price" type="number" step="0.01" value={formData.price} onChange={handleInputChange} required />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="quantity">Stock Quantity</Label>
-                    <Input id="quantity" name="quantity" type="number" defaultValue={editingProduct?.quantity} required />
+                    <Input id="quantity" name="quantity" type="number" value={formData.quantity} onChange={handleInputChange} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="barcode">Barcode</Label>
-                    <div className="relative">
-                      <Input id="barcode" name="barcode" defaultValue={editingProduct?.barcode} required />
-                      <Button type="button" size="icon" variant="ghost" className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-primary">
+                    <div className="relative flex gap-2">
+                      <Input id="barcode" name="barcode" value={formData.barcode} onChange={handleInputChange} required />
+                      <Button 
+                        type="button" 
+                        size="icon" 
+                        variant="secondary" 
+                        className="shrink-0 text-primary hover:bg-primary/10"
+                        onClick={() => setIsScannerOpen(true)}
+                      >
                         <Barcode className="w-4 h-4" />
                       </Button>
                     </div>
@@ -161,10 +204,7 @@ export default function InventoryPage() {
                       variant="ghost"
                       size="icon"
                       className="text-primary hover:bg-primary/10"
-                      onClick={() => {
-                        setEditingProduct(product);
-                        setIsAddOpen(true);
-                      }}
+                      onClick={() => handleEditClick(product)}
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -196,6 +236,12 @@ export default function InventoryPage() {
           </TableBody>
         </Table>
       </div>
+
+      <BarcodeScanner 
+        isOpen={isScannerOpen} 
+        onClose={() => setIsScannerOpen(false)} 
+        onScan={handleScanSuccess} 
+      />
     </div>
   );
 }
