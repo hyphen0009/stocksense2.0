@@ -28,18 +28,13 @@ export default function PredictionsPage() {
             date: s.timestamp.split('T')[0],
             quantitySold: s.quantity
           }))
-          // Fallback if no sales history, add some mock data for demo purposes if empty
-          .concat(sales.filter(s => s.productId === p.id).length === 0 ? [
-            { date: '2023-10-20', quantitySold: 2 },
-            { date: '2023-10-21', quantitySold: 3 }
-          ] : [])
       }));
 
       const result = await predictiveStockAlerts({
         products: productsData,
         predictionHorizonDays: 30
       });
-      
+
       setPredictions(result);
     } catch (error) {
       console.error("Prediction error:", error);
@@ -67,8 +62,8 @@ export default function PredictionsPage() {
             We use advanced analytics to study your sales history and tell you exactly when items will run out. No more stockouts!
           </p>
         </div>
-        <Button 
-          onClick={runAnalysis} 
+        <Button
+          onClick={runAnalysis}
           disabled={loading}
           className="bg-accent text-primary font-bold h-12 px-8 rounded-xl hover:opacity-90 relative z-10"
         >
@@ -94,7 +89,7 @@ export default function PredictionsPage() {
               <div className="p-4 bg-muted/50 rounded-xl border-l-4 border-accent">
                 <p className="text-sm italic leading-relaxed text-foreground/80">"{predictions.summary}"</p>
               </div>
-              
+
               <div className="space-y-4">
                 <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quick Stats</h4>
                 <div className="space-y-3">
@@ -115,7 +110,7 @@ export default function PredictionsPage() {
             {predictions.predictions.map((p) => {
               const isUrgent = p.daysUntilRunOut !== null && p.daysUntilRunOut <= 7;
               const isSafe = p.daysUntilRunOut === null || p.daysUntilRunOut > 20;
-              
+
               return (
                 <Card key={p.productId} className={`border-none shadow-md overflow-hidden transition-all ${isUrgent ? 'ring-2 ring-red-200' : ''}`}>
                   <div className="flex flex-col md:flex-row">
@@ -138,9 +133,9 @@ export default function PredictionsPage() {
                           <span>Usage Rate</span>
                           <span>{p.averageDailySales?.toFixed(1) || 0} units/day</span>
                         </div>
-                        <Progress 
-                          value={p.daysUntilRunOut !== null ? Math.max(10, 100 - (p.daysUntilRunOut * 3)) : 100} 
-                          className={`h-2 ${isUrgent ? 'bg-red-100 [&>div]:bg-red-500' : 'bg-muted [&>div]:bg-primary'}`} 
+                        <Progress
+                          value={p.daysUntilRunOut !== null ? Math.max(10, 100 - (p.daysUntilRunOut * 3)) : 100}
+                          className={`h-2 ${isUrgent ? 'bg-red-100 [&>div]:bg-red-500' : 'bg-muted [&>div]:bg-primary'}`}
                         />
                       </div>
 
