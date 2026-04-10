@@ -11,7 +11,7 @@ export interface ScannedProductInfo {
 
 export async function fetchProductInfo(barcode: string): Promise<ScannedProductInfo | null> {
     try {
-        const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+        const response = await fetch(`/api/lookup?barcode=${barcode}`);
 
         if (!response.ok) {
             return null;
