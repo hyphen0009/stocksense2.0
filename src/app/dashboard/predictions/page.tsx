@@ -8,15 +8,24 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Sparkles, Loader2, AlertCircle, Calendar, RefreshCcw, PackageCheck } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PredictionsPage() {
   const { products, sales, isInitialized } = useKiranaStore();
   const [predictions, setPredictions] = useState<PredictiveStockAlertsOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const runAnalysis = async () => {
     setLoading(true);
+    setError(null);
     try {
+      // Check if there are products
+      if (products.length === 0) {
+        throw new Error("No products found in inventory to analyze.");
+      }
+
       // Prepare data for the GenAI flow
       const productsData = products.map(p => ({
         productId: p.id,
@@ -28,6 +37,7 @@ export default function PredictionsPage() {
             date: s.timestamp.split('T')[0],
             quantitySold: s.quantity
           }))
+          .sort((a, b) => a.date.localeCompare(b.date))
       }));
 
       const result = await predictiveStockAlerts({
@@ -35,9 +45,23 @@ export default function PredictionsPage() {
         predictionHorizonDays: 30
       });
 
+      if (!result || !result.predictions) {
+        throw new Error("AI failed to generate predictions. Please check your data.");
+      }
+
       setPredictions(result);
-    } catch (error) {
-      console.error("Prediction error:", error);
+      toast({
+        title: "Analysis Complete",
+        description: "Your stock predictions have been updated.",
+      });
+    } catch (err: any) {
+      console.error("Prediction error:", err);
+      setError(err.message || "Failed to connect to AI engine. Ensure your API key is active.");
+      toast({
+        variant: "destructive",
+        title: "Prediction Failed",
+        description: err.message || "Check connection and try again.",
+      });
     } finally {
       setLoading(false);
     }
