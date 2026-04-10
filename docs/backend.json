@@ -1,56 +1,56 @@
 {
   "entities": {
-    "Shopkeeper": {
+    "Shop": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Shopkeeper",
+      "title": "Shop",
       "type": "object",
-      "description": "Represents a shopkeeper and their primary shop details for KiranaLink. Authentication is handled externally.",
+      "description": "Represents a single shop operated by a shopkeeper, containing essential business details.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Shopkeeper entity."
+          "description": "Unique identifier for the Shop entity."
         },
-        "shopName": {
+        "shopkeeperId": {
           "type": "string",
-          "description": "The registered name of the shop operated by the shopkeeper."
+          "description": "Reference to the unique identifier of the shopkeeper (user) who owns this shop, provided by an external authentication system. (Relationship: Shopkeeper 1:1 Shop)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The official name of the shop."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the shop."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The primary contact phone number for the shop."
         },
         "email": {
           "type": "string",
-          "description": "The contact email address associated with the shopkeeper's account.",
+          "description": "The primary contact email address for the shop, distinct from the shopkeeper's login email.",
           "format": "email"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the shopkeeper's profile was initially created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the shopkeeper's profile was last updated.",
-          "format": "date-time"
         }
       },
       "required": [
         "id",
-        "shopName",
-        "email",
-        "createdAt",
-        "updatedAt"
+        "shopkeeperId",
+        "name"
       ]
     },
     "Product": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
       "type": "object",
-      "description": "Represents an individual product managed by a shopkeeper, including inventory and pricing details.",
+      "description": "Represents a single product available in the shop, including its inventory details.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the Product entity."
         },
-        "shopkeeperId": {
+        "shopId": {
           "type": "string",
-          "description": "Reference to the Shopkeeper who owns and manages this product. (Relationship: Shopkeeper 1:N Product)"
+          "description": "Reference to the Shop this product belongs to. (Relationship: Shop 1:N Product)"
         },
         "name": {
           "type": "string",
@@ -58,75 +58,63 @@
         },
         "category": {
           "type": "string",
-          "description": "The category to which the product belongs (e.g., 'Snacks', 'Beverages', 'Home Goods')."
+          "description": "The category the product belongs to (e.g., 'Dairy', 'Snacks')."
         },
         "price": {
           "type": "number",
-          "description": "The current selling price of a single unit of the product."
+          "description": "The current selling price of the product."
         },
         "quantity": {
           "type": "number",
-          "description": "The current number of units of this product available in stock."
+          "description": "The current stock level (inventory quantity) of the product."
         },
         "barcode": {
           "type": "string",
-          "description": "The unique barcode identifier associated with the product, used for quick scanning and identification."
+          "description": "The barcode identifier for the product, used for quick scanning and unique within a shop."
         },
         "lowStockThreshold": {
           "type": "number",
-          "description": "The minimum quantity level at which this product is considered to be low in stock, triggering alerts."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the product record was initially created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the product record was last updated.",
-          "format": "date-time"
+          "description": "The minimum quantity level at which the product is considered low in stock and should trigger an alert."
         }
       },
       "required": [
         "id",
-        "shopkeeperId",
+        "shopId",
         "name",
         "category",
         "price",
         "quantity",
         "barcode",
-        "lowStockThreshold",
-        "createdAt",
-        "updatedAt"
+        "lowStockThreshold"
       ]
     },
     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Sale",
       "type": "object",
-      "description": "Represents a single sales transaction, capturing its overall details.",
+      "description": "Represents a single sales transaction recorded in the shop.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the Sale entity."
         },
-        "shopkeeperId": {
+        "shopId": {
           "type": "string",
-          "description": "Reference to the Shopkeeper who processed this sales transaction. (Relationship: Shopkeeper 1:N Sale)"
+          "description": "Reference to the Shop where this sale occurred. (Relationship: Shop 1:N Sale)"
         },
         "saleDateTime": {
           "type": "string",
-          "description": "The date and time when the sales transaction occurred.",
+          "description": "The date and time when the sale was recorded.",
           "format": "date-time"
         },
         "totalAmount": {
           "type": "number",
-          "description": "The total monetary value of all items included in this sale."
+          "description": "The total monetary amount of the sale."
         }
       },
       "required": [
         "id",
-        "shopkeeperId",
+        "shopId",
         "saleDateTime",
         "totalAmount"
       ]
@@ -135,7 +123,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "SaleItem",
       "type": "object",
-      "description": "Represents an individual product sold within a larger sales transaction, capturing its specific details at the time of sale.",
+      "description": "Represents a single product item sold as part of a larger sales transaction.",
       "properties": {
         "id": {
           "type": "string",
@@ -143,19 +131,19 @@
         },
         "saleId": {
           "type": "string",
-          "description": "Reference to the Sale transaction this item belongs to. (Relationship: Sale 1:N SaleItem)"
+          "description": "Reference to the Sale this item is part of. (Relationship: Sale 1:N SaleItem)"
         },
         "productId": {
           "type": "string",
-          "description": "Reference to the Product that was sold as part of this sale item. (Relationship: Product 1:N SaleItem)"
+          "description": "Reference to the Product that was sold in this sale item. (Relationship: Product 1:N SaleItem)"
         },
         "quantitySold": {
           "type": "number",
-          "description": "The number of units of the product sold in this specific sale item."
+          "description": "The quantity of the product sold in this particular sale item."
         },
         "priceAtSale": {
           "type": "number",
-          "description": "The price of a single unit of the product at the exact moment this sale occurred, for historical accuracy."
+          "description": "The price of the product at the time of this specific sale item (important for historical accuracy, as product prices can change over time)."
         }
       },
       "required": [
@@ -170,49 +158,49 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Alert",
       "type": "object",
-      "description": "Represents a proactive notification or alert generated for a shopkeeper, such as low stock or predicted run-out.",
+      "description": "Represents a proactive notification or warning about product stock levels or predicted run-outs.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the Alert entity."
         },
-        "shopkeeperId": {
+        "shopId": {
           "type": "string",
-          "description": "Reference to the Shopkeeper for whom this alert is generated. (Relationship: Shopkeeper 1:N Alert)"
+          "description": "Reference to the Shop this alert is associated with. (Relationship: Shop 1:N Alert)"
         },
         "productId": {
           "type": "string",
-          "description": "Optional reference to the Product related to this alert. Null if the alert is general or not product-specific. (Relationship: Product 1:N Alert)"
+          "description": "Reference to the Product this alert pertains to. (Relationship: Product 1:N Alert)"
         },
         "type": {
           "type": "string",
-          "description": "The classification of the alert (e.g., 'Low Stock', 'Predicted Run Out')."
+          "description": "The type of alert, e.g., 'low_stock' or 'predicted_run_out'."
         },
         "message": {
           "type": "string",
-          "description": "A detailed, human-readable description or message of the alert."
+          "description": "A descriptive message detailing the alert."
         },
-        "thresholdValue": {
-          "type": "number",
-          "description": "The specific quantity, number of days, or other value that triggered this alert (e.g., 5 for low stock, 3 for predicted run-out in 3 days)."
-        },
-        "generatedAt": {
+        "alertDateTime": {
           "type": "string",
-          "description": "Timestamp indicating when this alert was generated.",
+          "description": "The date and time when the alert was generated.",
           "format": "date-time"
         },
         "isDismissed": {
           "type": "boolean",
-          "description": "A boolean flag indicating whether the shopkeeper has acknowledged or dismissed this alert."
+          "description": "Indicates whether the shopkeeper has dismissed this alert."
+        },
+        "predictedRunOutDays": {
+          "type": "number",
+          "description": "The estimated number of days until the product is predicted to run out of stock. Applicable for 'predicted_run_out' type alerts, otherwise null."
         }
       },
       "required": [
         "id",
-        "shopkeeperId",
+        "shopId",
+        "productId",
         "type",
         "message",
-        "thresholdValue",
-        "generatedAt",
+        "alertDateTime",
         "isDismissed"
       ]
     }
@@ -226,106 +214,100 @@
   "firestore": {
     "structure": [
       {
-        "path": "/shopkeepers/{shopkeeperId}",
+        "path": "/shops/{shopId}",
         "definition": {
-          "entityName": "Shopkeeper",
+          "entityName": "Shop",
           "schema": {
-            "$ref": "#/backend/entities/Shopkeeper"
+            "$ref": "#/backend/entities/Shop"
           },
-          "description": "Root collection for individual shopkeeper profiles. The `shopkeeperId` corresponds directly to `request.auth.uid`. This document contains the primary shopkeeper and shop details. It implicitly serves as a 'role' for owning all nested data.",
-          "params": [
-            {
-              "name": "shopkeeperId",
-              "description": "The unique identifier of the shopkeeper, matching the Firebase Authentication UID."
-            }
-          ]
+          "description": "Top-level collection for all shops. Each shop document is owned by a specific shopkeeper and includes the 'shopkeeperId' field for direct authorization checks."
         }
       },
       {
-        "path": "/shopkeepers/{shopkeeperId}/products/{productId}",
+        "path": "/shops/{shopId}/products/{productId}",
         "definition": {
           "entityName": "Product",
           "schema": {
             "$ref": "#/backend/entities/Product"
           },
-          "description": "Subcollection storing all products managed by a specific shopkeeper. The `shopkeeperId` in the path ensures ownership. The `Product` document also contains `shopkeeperId` for internal consistency and querying, enabling Authorization Independence.",
+          "description": "Subcollection for products belonging to a specific shop. Each product document includes the 'shopkeeperId' denormalized from its parent shop for authorization independence, allowing direct security rule checks.",
           "params": [
             {
-              "name": "shopkeeperId",
-              "description": "The unique identifier of the owning shopkeeper."
+              "name": "shopId",
+              "description": "Unique identifier of the shop."
             },
             {
               "name": "productId",
-              "description": "The unique identifier of the product."
+              "description": "Unique identifier for the product."
             }
           ]
         }
       },
       {
-        "path": "/shopkeepers/{shopkeeperId}/sales/{saleId}",
+        "path": "/shops/{shopId}/sales/{saleId}",
         "definition": {
           "entityName": "Sale",
           "schema": {
             "$ref": "#/backend/entities/Sale"
           },
-          "description": "Subcollection storing individual sales transactions made by a specific shopkeeper. The `shopkeeperId` in the path ensures ownership. The `Sale` document also contains `shopkeeperId` for internal consistency and querying, enabling Authorization Independence.",
+          "description": "Subcollection for sales transactions recorded in a specific shop. Each sale document includes the 'shopkeeperId' denormalized from its parent shop for authorization independence.",
           "params": [
             {
-              "name": "shopkeeperId",
-              "description": "The unique identifier of the owning shopkeeper."
+              "name": "shopId",
+              "description": "Unique identifier of the shop."
             },
             {
               "name": "saleId",
-              "description": "The unique identifier of the sales transaction."
+              "description": "Unique identifier for the sales transaction."
             }
           ]
         }
       },
       {
-        "path": "/shopkeepers/{shopkeeperId}/sales/{saleId}/saleItems/{saleItemId}",
+        "path": "/shops/{shopId}/sales/{saleId}/saleItems/{saleItemId}",
         "definition": {
           "entityName": "SaleItem",
           "schema": {
             "$ref": "#/backend/entities/SaleItem"
           },
-          "description": "Nested subcollection storing individual items within a specific sales transaction. Authorization is handled by the parent `sale` and grandparent `shopkeeper` paths, ensuring Authorization Independence.",
+          "description": "Subcollection for individual items within a sales transaction. Each sale item document includes the 'shopkeeperId' denormalized from its grandparent shop for authorization independence, enabling robust security rules without 'get()' calls.",
           "params": [
             {
-              "name": "shopkeeperId",
-              "description": "The unique identifier of the owning shopkeeper."
+              "name": "shopId",
+              "description": "Unique identifier of the shop."
             },
             {
               "name": "saleId",
-              "description": "The unique identifier of the parent sales transaction."
+              "description": "Unique identifier for the sales transaction."
             },
             {
               "name": "saleItemId",
-              "description": "The unique identifier of the specific item within the sale."
+              "description": "Unique identifier for the individual item within the sales transaction."
             }
           ]
         }
       },
       {
-        "path": "/shopkeepers/{shopkeeperId}/alerts/{alertId}",
+        "path": "/shops/{shopId}/alerts/{alertId}",
         "definition": {
           "entityName": "Alert",
           "schema": {
             "$ref": "#/backend/entities/Alert"
           },
-          "description": "Subcollection storing proactive alerts generated for a specific shopkeeper. The `shopkeeperId` in the path ensures ownership. The `Alert` document also contains `shopkeeperId` for internal consistency and querying, enabling Authorization Independence.",
+          "description": "Subcollection for alerts related to a specific shop. Each alert document includes the 'shopkeeperId' denormalized from its parent shop for authorization independence.",
           "params": [
             {
-              "name": "shopkeeperId",
-              "description": "The unique identifier of the owning shopkeeper."
+              "name": "shopId",
+              "description": "Unique identifier of the shop."
             },
             {
               "name": "alertId",
-              "description": "The unique identifier of the alert."
+              "description": "Unique identifier for the alert."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore data structure for KiranaLink is designed around strong ownership, clear hierarchical relationships, and strict adherence to Authorization Independence. Each shopkeeper's data is siloed under their unique ID, leveraging Firebase Authentication's `request.auth.uid` for path-based authorization. This structure ensures that a shopkeeper can only access their own products, sales, sale items, and alerts.\n\n**Authorization Independence (CRITICAL):** This design eliminates the need for `get()` calls in Firestore Security Rules, which is a core principle. For instance:\n*   **Shopkeeper Data:** The `/shopkeepers/{shopkeeperId}` path directly maps `shopkeeperId` to `request.auth.uid`, making authorization a simple equality check. No parent document lookup is needed.\n*   **Products, Sales, Alerts:** These entities are stored in subcollections like `/shopkeepers/{shopkeeperId}/products/{productId}`. The `shopkeeperId` is directly available in the path, making authorization explicit (`request.auth.uid == shopkeeperId`). Although the `Product`, `Sale`, and `Alert` entities themselves include a `shopkeeperId` field, the primary security enforcement relies on the path parameter, ensuring authorization independence. This also allows for atomic creation of a shopkeeper document and related initial data, as no `get()` for a parent `shopkeeper` document is needed in subsequent rule evaluations.\n*   **Sale Items:** Stored at `/shopkeepers/{shopkeeperId}/sales/{saleId}/saleItems/{saleItemId}`. Here, authorization for `saleItems` flows naturally from the authorization of its parent `sale`. A rule on `saleItems` would check `request.auth.uid == shopkeeperId` (from the grandparent path), ensuring that only the owning shopkeeper can access their sales items. This avoids needing to `get()` the parent `sale` document to check its `shopkeeperId`.\n\n**QAPs (Queries as Authorization Primitives):** The structural segregation fully supports QAPs. List operations are inherently secure:\n*   To list all products for the authenticated shopkeeper: The client queries `/shopkeepers/{request.auth.uid}/products`. Security rules can then simply verify `request.auth.uid == shopkeeperId` for all documents within that path. The query itself provides the necessary scope, and the rules confirm the identity. This prevents over-fetching and ensures data integrity. Similarly, listing sales or alerts is straightforward and secure.\n*   To list sale items for a specific sale by the authenticated shopkeeper: The query would target `/shopkeepers/{request.auth.uid}/sales/{saleId}/saleItems`. The rules verify the shopkeeper ID from the path, and implicitly ensure the `saleId` is valid for that shopkeeper.\n\nThis design prioritizes a clear, segmentable data model where authorization is transparent and directly tied to the path, simplifying security rules, improving debuggability, and scaling efficiently."
+    "reasoning": "The Firestore structure for KiranaLink is designed around the core principles of Authorization Independence, Structural Segregation, and Access Modeling, prioritizing security and debuggability. All entities are organized hierarchically under a `/shops/{shopId}` root, reflecting the app's shop-centric data model.\n\n**Authorization Independence (CRITICAL):**\nTo eliminate the need for `get()` calls in security rules, which can break atomic operations and complicate debugging, the `shopkeeperId` from the `Shop` entity is denormalized and stored directly within all subcollection documents (Product, Sale, SaleItem, Alert). This ensures that any document, regardless of its depth in the hierarchy, contains the necessary authorization context (`shopkeeperId`) to determine if `request.auth.uid` has access. For example, a `Product` document will contain its `shopId` (from the path) and its `shopkeeperId` (denormalized from the parent shop), allowing rules to simply check `request.auth.uid == resource.data.shopkeeperId`.\n\n**Query as Policy (QAPs) Support:**\n1.  **`/shops` Collection:** Shopkeepers can list their owned shops by querying `shops` where `shopkeeperId == request.auth.uid`. The security rule for this collection will enforce that `request.auth.uid` matches the `shopkeeperId` field on any `Shop` document. This is a secure `list` operation, as documents are implicitly filtered by ownership.\n2.  **Subcollections (e.g., `/shops/{shopId}/products`):** The hierarchical path structure naturally scopes data to a specific `shopId`. By denormalizing the `shopkeeperId` into each `Product` document, security rules can confirm that `request.auth.uid` is the owner of the `shopId` specified in the path AND matches the `shopkeeperId` stored within the `Product` document itself. This dual check prevents users from accessing subcollections of shops they don't own by simply guessing `shopId`s in the path. All `list` operations within these subcollections are secure because the rule ensures that any document returned by a query belongs to the authenticated user's shop.\n\n**Structural Segregation:**\nEach collection (e.g., `/shops`, `/shops/{shopId}/products`) contains documents with a homogeneous security posture. All products within a shop's `products` subcollection are accessible/modifiable by the same `shopkeeperId`. This avoids complex conditional logic in security rules, making them simpler and more robust.\n\n**Access Modeling:**\n*   **Private Data & Hierarchical Paths:** The entire structure follows a clear hierarchical path for user-owned data (`/shops/{shopId}/products/{productId}`). This makes ownership clear and security rules straightforward. The `shopkeeperId` acts as the primary access control mechanism.\n\n**Data Clarity and Predictability:**\nWildcards like `{shopId}` and `{productId}` are semantically clear. Authorization fields are standardized to `shopkeeperId`. This consistency aids development and debugging."
   }
 }

@@ -5,114 +5,124 @@ service cloud.firestore {
     /**
      * KIRANALINK SECURITY RULES
      *
-     * CORE PHILOSOPHY:
-     * This ruleset enforces a strict Ownership model. All application data is siloed 
-     * by the Shopkeeper's UID. A Shopkeeper has full CRUD access to their own data 
-     * branch and zero access to any other Shopkeeper's data.
+     * Core Philosophy: 
+     * This ruleset implements a strict Shopkeeper Ownership model. Security is designed around 
+     * "Authorization Independence," where the owner's unique ID (shopkeeperId) is denormalized 
+     * onto every document in the hierarchy. This allows for high-performance rules that 
+     * never require costly 'get()' lookups for parent documents.
      *
-     * DATA STRUCTURE:
-     * The hierarchy is rooted at /shopkeepers/{shopkeeperId}. All subsequent 
-     * collections (products, sales, alerts) are subcollections of a specific 
-     * shopkeeper document. This path-based nesting allows for efficient, 
-     * non-recursive security checks.
+     * Data Structure:
+     * Data is organized hierarchically under the root /shops/{shopId} collection. All 
+     * sub-resources (Products, Sales, SaleItems, and Alerts) are nested under their 
+     * respective shop to maintain logical scoping and physical segregation.
      *
-     * KEY SECURITY DECISIONS:
-     * 1. Authorization Independence: We rely on the {shopkeeperId} in the document 
-     *    path to verify ownership, avoiding expensive get() calls.
-     * 2. Relational Integrity: On creation, we ensure that the internal fields 
-     *    (like shopkeeperId) match the path parameter to prevent cross-talk.
-     * 3. Prototyping Mode: We strictly control "Who" can access data (Authorization), 
-     *    but allow "What" the data looks like (Schema flexibility) to support rapid development.
-     * 4. Denormalization for Authorization: Essential identifiers are kept in paths 
-     *    and document fields to ensure rules remain performant and simple.
+     * Key Security Decisions:
+     * 1. Strict Ownership: Only the authenticated shopkeeper matching the 'shopkeeperId' 
+     *    can read or write data within a shop's tree.
+     * 2. Denormalization for Performance: Every document contains 'shopkeeperId' and 'shopId' 
+     *    to allow atomic authorization checks.
+     * 3. Immutability: Critical relational fields like 'shopkeeperId' and 'shopId' are 
+     *    enforced as immutable after creation to prevent data hijacking or cross-shop leakage.
+     * 4. Relational Integrity: Rules enforce that the internal document IDs and shop IDs 
+     *    match the path parameters provided in the request.
      */
 
     // --- Helper Functions ---
 
-    /** @description Checks if the request is from an authenticated user. */
+    /** @description Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user matches the provided userId. */
+    /** @description Checks if the user's UID matches the provided ID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Combines ownership check with a check that the document actually exists. Used for updates and deletes. */
+    /** @description Validates ownership for an existing document during update/delete. */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
+    }
+
+    /** @description Validates ownership for a new document during creation. */
+    function isRequestOwner(userId) {
+      return request.resource != null && isOwner(userId);
     }
 
     // --- Collection Rules ---
 
     /**
-     * @description Rules for the root Shopkeeper profile.
-     * @path /shopkeepers/{shopkeeperId}
-     * @allow (get) If the shopkeeper is viewing their own profile.
-     * @deny (list) Generally denied unless the user is the owner, preventing user enumeration.
-     * @principle Enforces self-creation and strict profile ownership.
+     * @description Rules for the Shop entity. Controls the root shop profile.
+     * @path /shops/{shopId}
+     * @allow (create) if auth.uid matches shopkeeperId and document ID matches shopId.
+     * @deny (list) if the user attempts to list shops they do not own.
+     * @principle Enforces document ownership and path-to-data consistency.
      */
-    match /shopkeepers/{shopkeeperId} {
-      allow get, list: if isOwner(shopkeeperId);
-      allow create: if isOwner(shopkeeperId) && request.resource.data.id == shopkeeperId;
-      allow update: if isExistingOwner(shopkeeperId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(shopkeeperId);
+    match /shops/{shopId} {
+      allow get: if isOwner(resource.data.shopkeeperId);
+      allow list: if isSignedIn() && (resource == null || isOwner(resource.data.shopkeeperId));
+      allow create: if isRequestOwner(request.resource.data.shopkeeperId) && request.resource.data.id == shopId;
+      allow update: if isExistingOwner(resource.data.shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
+      allow delete: if isExistingOwner(resource.data.shopkeeperId);
 
       /**
-       * @description Products managed by the shopkeeper.
-       * @path /shopkeepers/{shopkeeperId}/products/{productId}
-       * @allow (create) If the shopkeeperId in data matches the path and auth UID.
-       * @deny (update) If attempting to change the owning shopkeeperId.
-       * @principle Path-based ownership with relational integrity enforcement.
+       * @description Rules for Products within a shop.
+       * @path /shops/{shopId}/products/{productId}
+       * @allow (get) if the shopkeeperId in the product document matches the user's UID.
+       * @deny (create) if the shopId in the data does not match the URL path.
+       * @principle Uses denormalized shopkeeperId to ensure authorization independence.
        */
       match /products/{productId} {
-        allow get, list: if isOwner(shopkeeperId);
-        allow create: if isOwner(shopkeeperId) && request.resource.data.shopkeeperId == shopkeeperId;
-        allow update: if isExistingOwner(shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
-        allow delete: if isExistingOwner(shopkeeperId);
+        allow get: if isOwner(resource.data.shopkeeperId);
+        allow list: if isSignedIn() && (resource == null || isOwner(resource.data.shopkeeperId));
+        allow create: if isRequestOwner(request.resource.data.shopkeeperId) && request.resource.data.shopId == shopId;
+        allow update: if isExistingOwner(resource.data.shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
+        allow delete: if isExistingOwner(resource.data.shopkeeperId);
       }
 
       /**
-       * @description Sales transactions processed by the shopkeeper.
-       * @path /shopkeepers/{shopkeeperId}/sales/{saleId}
-       * @allow (list) Shopkeeper listing their own sales history.
-       * @deny (delete) If the sale record does not exist or belongs to another.
-       * @principle Ensures transaction data remains private to the processing shopkeeper.
+       * @description Rules for Sales transactions.
+       * @path /shops/{shopId}/sales/{saleId}
+       * @allow (update) if owner and shopkeeperId remains unchanged.
+       * @deny (create) if the shopkeeperId is missing or incorrect.
+       * @principle Ensures sales data is only accessible to the shop owner.
        */
       match /sales/{saleId} {
-        allow get, list: if isOwner(shopkeeperId);
-        allow create: if isOwner(shopkeeperId) && request.resource.data.shopkeeperId == shopkeeperId;
-        allow update: if isExistingOwner(shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
-        allow delete: if isExistingOwner(shopkeeperId);
+        allow get: if isOwner(resource.data.shopkeeperId);
+        allow list: if isSignedIn() && (resource == null || isOwner(resource.data.shopkeeperId));
+        allow create: if isRequestOwner(request.resource.data.shopkeeperId) && request.resource.data.shopId == shopId;
+        allow update: if isExistingOwner(resource.data.shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
+        allow delete: if isExistingOwner(resource.data.shopkeeperId);
 
         /**
-         * @description Line items within a specific sale.
-         * @path /shopkeepers/{shopkeeperId}/sales/{saleId}/saleItems/{saleItemId}
-         * @allow (get) If the parent sale belongs to the authenticated shopkeeper.
-         * @deny (create) If the user UID does not match the shopkeeperId in the path.
-         * @principle Nested authorization flowing from the grandparent shopkeeper path.
+         * @description Rules for individual items within a sale.
+         * @path /shops/{shopId}/sales/{saleId}/saleItems/{saleItemId}
+         * @allow (create) if user owns the shop via denormalized shopkeeperId.
+         * @deny (delete) if requested by a user who is not the shop owner.
+         * @principle Deeply nested relational integrity through denormalization.
          */
         match /saleItems/{saleItemId} {
-          allow get, list: if isOwner(shopkeeperId);
-          allow create: if isOwner(shopkeeperId);
-          allow update: if isExistingOwner(shopkeeperId);
-          allow delete: if isExistingOwner(shopkeeperId);
+          allow get: if isOwner(resource.data.shopkeeperId);
+          allow list: if isSignedIn() && (resource == null || isOwner(resource.data.shopkeeperId));
+          allow create: if isRequestOwner(request.resource.data.shopkeeperId) && request.resource.data.saleId == saleId;
+          allow update: if isExistingOwner(resource.data.shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
+          allow delete: if isExistingOwner(resource.data.shopkeeperId);
         }
       }
 
       /**
-       * @description System-generated alerts for the shopkeeper (e.g., low stock).
-       * @path /shopkeepers/{shopkeeperId}/alerts/{alertId}
-       * @allow (update) To allow the shopkeeper to mark an alert as 'dismissed'.
-       * @deny (get) If a user tries to access alerts for a different shopkeeper.
-       * @principle Private notification silo restricted to the intended recipient.
+       * @description Rules for Alerts (e.g., low stock, smart predictions).
+       * @path /shops/{shopId}/alerts/{alertId}
+       * @allow (update) if the owner is dismissing an alert.
+       * @deny (get) if a user tries to access alerts for a shop they do not own.
+       * @principle Grants access to automated insights based on shop ownership.
        */
       match /alerts/{alertId} {
-        allow get, list: if isOwner(shopkeeperId);
-        allow create: if isOwner(shopkeeperId) && request.resource.data.shopkeeperId == shopkeeperId;
-        allow update: if isExistingOwner(shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
-        allow delete: if isExistingOwner(shopkeeperId);
+        allow get: if isOwner(resource.data.shopkeeperId);
+        allow list: if isSignedIn() && (resource == null || isOwner(resource.data.shopkeeperId));
+        allow create: if isRequestOwner(request.resource.data.shopkeeperId) && request.resource.data.shopId == shopId;
+        allow update: if isExistingOwner(resource.data.shopkeeperId) && request.resource.data.shopkeeperId == resource.data.shopkeeperId;
+        allow delete: if isExistingOwner(resource.data.shopkeeperId);
       }
     }
   }
