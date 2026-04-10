@@ -32,13 +32,18 @@ export const whatsappAssistantFlow = ai.defineFlow(
         outputSchema: z.string(),
     },
     async (input) => {
-        // 1. Identify User
+        // 1. Identify User (Normalize phone by removing 'whatsapp:' prefix if present)
+        const rawPhone = input.from.replace('whatsapp:', '');
+        console.log(`Searching for user with phone: ${rawPhone}`);
+
         const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('phoneNumber', '==', input.from));
+        // Try both with and without '+' prefix if the user saved it differently
+        const q = query(usersRef, where('phoneNumber', 'in', [rawPhone, rawPhone.replace('+', '')]));
         const userSnapshot = await getDocs(q);
 
         if (userSnapshot.empty) {
-            return "Hello! I don't recognize this number. Please register your shop at StockSense.com first. नमस्ते! मैं इस नंबर को नहीं पहचानता। कृपया पहले StockSense.com पर अपनी दुकान रजिस्टर करें।";
+            console.log(`User not found for phone: ${rawPhone}`);
+            return `Hello! I don't recognize this number. Please register your shop at StockSense.com first. नमस्ते! मैं इस नंबर को नहीं पहचानता। कृपया पहले StockSense.com पर अपनी दुकान रजिस्टर करें। (Debug: Checked ${rawPhone})`;
         }
 
         const userData = userSnapshot.docs[0].data();

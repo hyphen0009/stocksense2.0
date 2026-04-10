@@ -20,8 +20,11 @@ export async function POST(req: NextRequest) {
             from: from,
         });
 
+        console.log(`Assistant reply for ${from}: ${reply}`);
+
         // 2. Send the response back via Twilio
         await sendWhatsAppMessage(from, reply);
+        console.log(`Sent WhatsApp message to ${from}`);
 
         // 3. Acknowledge Twilio
         return new NextResponse('OK', { status: 200 });
