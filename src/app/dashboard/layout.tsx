@@ -37,8 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     isActive={pathname === item.url}
                     tooltip={item.title}
                     className={`h-12 px-4 rounded-xl transition-all duration-300 group overflow-hidden relative ${pathname === item.url
-                        ? 'bg-primary text-white shadow-lg shadow-primary/25 translate-x-1'
-                        : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 hover:translate-x-1'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/25 translate-x-1'
+                      : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 hover:translate-x-1'
                       }`}
                   >
                     <Link href={item.url} className="flex items-center gap-3">
@@ -78,26 +78,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Sidebar>
 
         <SidebarInset className="flex-1 flex flex-col min-w-0">
-          <header className="h-20 flex items-center justify-between px-8 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl sticky top-0 z-20">
-            <div className="flex items-center gap-4">
+          <header className="h-20 flex items-center justify-between px-4 md:px-8 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl sticky top-0 z-20">
+            <div className="flex items-center gap-3">
               <SidebarTrigger className="md:hidden" />
               <div className="flex flex-col">
-                <h2 className="text-xl font-bold text-slate-900 font-headline tracking-tight">
+                <h2 className="text-lg md:text-xl font-bold text-slate-900 font-headline tracking-tight">
                   {menuItems.find(item => item.url === pathname)?.title || 'Dashboard'}
                 </h2>
-                <p className="text-xs text-slate-500 font-medium hidden sm:block">
+                <p className="text-[10px] text-slate-500 font-medium hidden sm:block">
                   Last updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <div className="hidden sm:flex flex-col items-end mr-2">
                 <span className="text-sm font-bold text-slate-900 leading-none">Admin Panel</span>
                 <span className="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-wider flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live System
                 </span>
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center text-white font-bold shadow-lg shadow-slate-900/10 cursor-pointer hover:scale-105 transition-transform">
+              <SidebarTrigger className="md:hidden">
+                <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white font-bold shadow-lg shadow-slate-900/10 cursor-pointer hover:scale-105 transition-transform">
+                  <Menu className="w-5 h-5" />
+                </div>
+              </SidebarTrigger>
+              <div className="hidden md:flex w-11 h-11 rounded-2xl bg-slate-900 items-center justify-center text-white font-bold shadow-lg shadow-slate-900/10 cursor-pointer hover:scale-105 transition-transform">
                 <Menu className="w-5 h-5" />
               </div>
             </div>

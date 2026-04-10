@@ -92,7 +92,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-[500px] border-none bg-slate-900 text-white overflow-hidden p-0 rounded-[2rem]">
+      <DialogContent className="w-[95vw] sm:max-w-[500px] border-none bg-slate-900 text-white overflow-hidden p-0 rounded-[2rem] mx-auto">
         <div className="p-8 pb-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl font-bold font-headline text-white">

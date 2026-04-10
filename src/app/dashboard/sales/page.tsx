@@ -115,7 +115,7 @@ export default function SalesPage() {
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto h-[calc(100vh-140px)] animate-in slide-in-from-bottom-4 duration-500">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto min-h-screen lg:h-[calc(100vh-140px)] animate-in slide-in-from-bottom-4 duration-500 pb-20 lg:pb-0">
       {/* Product Selection Area */}
       <div className="lg:col-span-7 flex flex-col space-y-4">
         <div className="flex gap-3">
