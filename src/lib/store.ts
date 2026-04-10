@@ -1,6 +1,21 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  setDoc,
+  getDocs,
+  Timestamp,
+  writeBatch
+} from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 export interface Product {
   id: string;
@@ -20,68 +35,77 @@ export interface Sale {
   timestamp: string;
 }
 
-const INITIAL_PRODUCTS: Product[] = [
-  { id: '1', name: 'Premium Basmati Rice', category: 'Grains', price: 120, quantity: 45, barcode: '8901234567890' },
-  { id: '2', name: 'Cold Pressed Sunflower Oil', category: 'Oils', price: 180, quantity: 5, barcode: '8901234567891' },
-  { id: '3', name: 'Organic Turmeric Powder', category: 'Spices', price: 50, quantity: 2, barcode: '8901234567892' },
-  { id: '4', name: 'Whole Wheat Flour 5kg', category: 'Grains', price: 240, quantity: 15, barcode: '8901234567893' },
-  { id: '5', name: 'Darjeeling Tea Leaves', category: 'Beverages', price: 350, quantity: 8, barcode: '8901234567894' },
-];
-
 export function useKiranaStore() {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [db, setDb] = useState<any>(null);
 
   useEffect(() => {
-    const storedProducts = localStorage.getItem('kiranatalk_products');
-    const storedSales = localStorage.getItem('kiranatalk_sales');
+    const { firestore } = initializeFirebase();
+    setDb(firestore);
 
-    if (storedProducts) {
-      setProducts(JSON.parse(storedProducts));
-    } else {
-      setProducts(INITIAL_PRODUCTS);
-      localStorage.setItem('kiranatalk_products', JSON.stringify(INITIAL_PRODUCTS));
-    }
+    // Listen to Products
+    const qProducts = query(collection(firestore, 'products'), orderBy('name', 'asc'));
+    const unsubscribeProducts = onSnapshot(qProducts, (snapshot) => {
+      const pData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      setProducts(pData);
 
-    if (storedSales) {
-      setSales(JSON.parse(storedSales));
-    }
-    
+      // Migration logic: If cloud is empty but local has data, migrate
+      if (pData.length === 0) {
+        const localProducts = localStorage.getItem('kiranatalk_products');
+        if (localProducts) {
+          const parsed = JSON.parse(localProducts);
+          const batch = writeBatch(firestore);
+          parsed.forEach((p: Product) => {
+            const docRef = doc(collection(firestore, 'products'));
+            batch.set(docRef, { ...p, id: docRef.id });
+          });
+          batch.commit().then(() => {
+            localStorage.removeItem('kiranatalk_products');
+          });
+        }
+      }
+    });
+
+    // Listen to Sales
+    const qSales = query(collection(firestore, 'sales'), orderBy('timestamp', 'desc'));
+    const unsubscribeSales = onSnapshot(qSales, (snapshot) => {
+      const sData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+      setSales(sData);
+    });
+
     setIsInitialized(true);
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeSales();
+    };
   }, []);
 
-  const saveToStorage = (p: Product[], s: Sale[]) => {
-    localStorage.setItem('kiranatalk_products', JSON.stringify(p));
-    localStorage.setItem('kiranatalk_sales', JSON.stringify(s));
+  const addProduct = async (product: Omit<Product, 'id'>) => {
+    if (!db) return;
+    const docRef = await addDoc(collection(db, 'products'), product);
+    return { ...product, id: docRef.id };
   };
 
-  const addProduct = (product: Omit<Product, 'id'>) => {
-    const newProduct = { ...product, id: Math.random().toString(36).substr(2, 9) };
-    const newProducts = [...products, newProduct];
-    setProducts(newProducts);
-    saveToStorage(newProducts, sales);
-    return newProduct;
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
+    if (!db) return;
+    const docRef = doc(db, 'products', id);
+    await updateDoc(docRef, updates);
   };
 
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    const newProducts = products.map((p) => (p.id === id ? { ...p, ...updates } : p));
-    setProducts(newProducts);
-    saveToStorage(newProducts, sales);
+  const deleteProduct = async (id: string) => {
+    if (!db) return;
+    await deleteDoc(doc(db, 'products', id));
   };
 
-  const deleteProduct = (id: string) => {
-    const newProducts = products.filter((p) => p.id !== id);
-    setProducts(newProducts);
-    saveToStorage(newProducts, sales);
-  };
-
-  const recordSale = (barcode: string, quantity: number = 1) => {
+  const recordSale = async (barcode: string, quantity: number = 1) => {
+    if (!db) return null;
     const product = products.find((p) => p.barcode === barcode);
     if (!product || product.quantity < quantity) return null;
 
-    const sale: Sale = {
-      id: Math.random().toString(36).substr(2, 9),
+    const sale: Omit<Sale, 'id'> = {
       productId: product.id,
       productName: product.name,
       quantity,
@@ -89,15 +113,16 @@ export function useKiranaStore() {
       timestamp: new Date().toISOString(),
     };
 
-    const newSales = [sale, ...sales];
-    const newProducts = products.map((p) => 
-      p.id === product.id ? { ...p, quantity: p.quantity - quantity } : p
-    );
+    // Use a batch to update stock and log sale atomically
+    const batch = writeBatch(db);
+    const saleRef = doc(collection(db, 'sales'));
+    const productRef = doc(db, 'products', product.id);
 
-    setSales(newSales);
-    setProducts(newProducts);
-    saveToStorage(newProducts, newSales);
-    return sale;
+    batch.set(saleRef, sale);
+    batch.update(productRef, { quantity: product.quantity - quantity });
+
+    await batch.commit();
+    return { ...sale, id: saleRef.id };
   };
 
   return {

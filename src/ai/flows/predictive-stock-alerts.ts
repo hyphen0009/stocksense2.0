@@ -65,18 +65,17 @@ For each product in the 'products' array:
 1.  **Calculate Average Daily Sales:** 
     *   Find the total 'quantitySold' from its 'salesHistory'.
     *   Find the date of the *earliest* sale in 'salesHistory'. If 'salesHistory' is empty, 'averageDailySales' is 0.
-    *   Calculate the number of days between {{currentDate}} and the earliest sale date. (Difference in days).
-    *   Set 'TotalDaysSinceFirstSale' = (Difference in days) + 1.
+    *   Calculate 'TotalDaysSinceFirstSale' = ({{currentDate}} - earliest sale date) + 1.
     *   Set 'averageDailySales' = total quantity sold / 'TotalDaysSinceFirstSale'.
 2.  **Determine Run-Out:**
     *   If 'currentStock' is 0, set 'predictedRunOutDate' to '{{currentDate}}', 'daysUntilRunOut' to 0.
     *   If 'averageDailySales' is 0, set 'predictedRunOutDate' and 'daysUntilRunOut' to null.
-    *   Calculate 'daysUntilRunOut' = Math.floor('currentStock' / 'averageDailySales').
-    *   Calculate 'predictedRunOutDate' by adding 'daysUntilRunOut' days to {{currentDate}}. 
-    *   If 'daysUntilRunOut' > {{predictionHorizonDays}}, set 'predictedRunOutDate' and 'daysUntilRunOut' to null (outside horizon).
-3.  **Provide Prediction Reasoning:** Explain specifically how 'averageDailySales' was calculated (Total Sales / Total Days) and the justification for the date.
+    *   Calculate 'daysUntilRunOut' = 'currentStock' / 'averageDailySales'.
+    *   If 'daysUntilRunOut' <= 'predictionHorizonDays', 'predictedRunOutDate' = {{currentDate}} + 'daysUntilRunOut'. Otherwise null.
+3.  **Provide Prediction Reasoning:** Explain specifically how 'averageDailySales' was calculated and the justification for the date.
 
 Finally, compile a 'summary' that highlights products predicted to run out soon.
+
 Ensure the entire output is a valid JSON object matching the PredictiveStockAlertsOutputSchema.
 `,
 });
