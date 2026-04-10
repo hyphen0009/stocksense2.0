@@ -4,52 +4,26 @@
 
 @layer base {
   :root {
-    --background: 86 25% 95%;
-    --foreground: 96 10% 10%;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 96 10% 10%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 96 10% 10%;
-    --primary: 96 45% 33%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 96 15% 90%;
-    --secondary-foreground: 96 45% 15%;
-    --muted: 86 10% 90%;
-    --muted-foreground: 96 10% 40%;
-    --accent: 60 78% 64%;
-    --accent-foreground: 96 45% 10%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 96 10% 85%;
-    --input: 96 10% 85%;
-    --ring: 96 45% 33%;
-    --radius: 0.75rem;
-    --chart-1: 96 45% 33%;
-    --chart-2: 60 78% 64%;
-    --chart-3: 35 90% 50%;
-    --chart-4: 190 70% 40%;
-    --chart-5: 280 60% 50%;
-  }
-  .dark {
-    --background: 96 45% 5%;
-    --foreground: 86 25% 95%;
-    --card: 96 45% 8%;
-    --card-foreground: 86 25% 95%;
-    --popover: 96 45% 8%;
-    --popover-foreground: 86 25% 95%;
-    --primary: 96 45% 33%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 96 30% 15%;
-    --secondary-foreground: 86 25% 95%;
-    --muted: 96 30% 15%;
-    --muted-foreground: 96 10% 65%;
-    --accent: 60 78% 64%;
-    --accent-foreground: 96 45% 10%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 96 30% 20%;
-    --input: 96 30% 20%;
-    --ring: 96 45% 33%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 238 77% 62%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 238 77% 62%;
+    --radius: 1rem;
   }
 }
 
@@ -58,6 +32,18 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body antialiased selection:bg-primary/20 selection:text-primary;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  }
+  .glass-dark {
+    @apply bg-slate-900/70 backdrop-blur-lg border border-white/10 shadow-xl;
+  }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-400;
   }
 }
